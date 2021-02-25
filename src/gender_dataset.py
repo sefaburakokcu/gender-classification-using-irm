@@ -29,11 +29,14 @@ def convert_image_color(image, red=True):
 
 class GenderDataset(datasets.VisionDataset):
 
-  def __init__(self, root='./data', train=True, transform=None, target_transform=None):
+  def __init__(self, root='./data', train=True, transform=None, target_transform=None, force=False, convert=True):
     super(GenderDataset, self).__init__(root, transform=transform,
                                 target_transform=target_transform)
     
     self.train = train
+    self.force = force
+    self.convert = convert
+    
     self.prepare_converted_dataset()
     if self.train:
       self.data_label_tuples = torch.load(os.path.join(self.root, 'train', 'train1.pt')) + \
@@ -67,10 +70,11 @@ class GenderDataset(datasets.VisionDataset):
         data_dir = os.path.join(self.root, "train")
     else:
         data_dir = os.path.join(self.root, "test")
-    if (os.path.exists(os.path.join(data_dir, 'train1.pt')) \
+        
+    if (not self.force)  and (os.path.exists(os.path.join(data_dir, 'train1.pt')) \
         and os.path.exists(os.path.join(data_dir, 'train2.pt'))) \
         or os.path.exists(os.path.join(data_dir, 'test.pt')):
-      print('Colored MNIST dataset already exists')
+      print('Gender Classification dataset already exists and is loading.')
       return
 
     print('Preparing Converted Images for Gender Classification')
@@ -83,6 +87,7 @@ class GenderDataset(datasets.VisionDataset):
       if idx % 10000 == 0:
         print(f'Converting image {idx}/{len(trainset)}')
       im = im.resize((112,112))
+      
       im_array = np.array(im)
 
       # Flip label with 25% probability
@@ -106,8 +111,11 @@ class GenderDataset(datasets.VisionDataset):
         # 90% in the test environment
         if np.random.uniform() < 0.9:
           color_red = not color_red
-
-      colored_arr = convert_image_color(im_array, red=color_red)
+    
+      if self.convert:
+          colored_arr = convert_image_color(im_array, red=color_red)
+      else:
+          colored_arr = im_array
       
       if self.train:
           if idx%2 == 0:
